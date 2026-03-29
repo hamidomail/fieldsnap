@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>FieldSnap</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --card: #16161f;
+    --border: #252535;
+    --accent: #00e5a0;
+    --accent2: #7c3aed;
+    --accent3: #f59e0b;
+    --text: #f0f0f8;
+    --muted: #6b6b8a;
+    --danger: #ef4444;
+    --radius: 16px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    overflow-x: hidden;
+  }
+
+  .phone-shell {
+    width: 100%;
+    max-width: 430px;
+    min-height: 100vh;
+    background: var(--bg);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* STATUS BAR */
+  .status-bar {
+    background: var(--bg);
+    padding: 12px 20px 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  /* HEADER */
+  .app-header {
+    padding: 12px 20px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    color: var(--text);
+  }
+
+  .logo span { color: var(--accent); }
+
+  .header-badge {
+    background: var(--accent);
+    color: #000;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* SCREEN CONTAINER */
+  .screens { flex: 1; position: relative; overflow: hidden; }
+
+  .screen {
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+    padding: 0 16px 90px;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(30px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .screen.active {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateX(0);
+  }
+
+  /* CAMERA SCREEN */
+  #screen-camera { padding: 0 0 90px; }
+
+  .viewfinder {
+    width: 100%;
+    aspect-ratio: 3/4;
+    background: #000;
+    position: relative;
+    overflow: hidden;
+    border-bottom: 2px solid var(--border);
+  }
+
+  .viewfinder video, .viewfinder canvas {
+    width: 100%; height: 100%;
+    object-fit: cover;
+  }
+
+  .viewfinder-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .corner {
+    position: absolute;
+    width: 28px; height: 28px;
+    border-color: var(--accent);
+    border-style: solid;
+  }
+  .corner.tl { top: 20px; left: 20px; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+  .corner.tr { top: 20px; right: 20px; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+  .corner.bl { bottom: 20px; left: 20px; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+  .corner.br { bottom: 20px; right: 20px; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+  .vf-info {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+  }
+
+  .vf-tag {
+    background: rgba(0,0,0,0.6);
+    border: 1px solid rgba(255,255,255,0.15);
+    backdrop-filter: blur(8px);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .gps-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+
+  .no-camera-placeholder {
+    width: 100%;
+    aspect-ratio: 3/4;
+    background: linear-gradient(135deg, #0d0d18 0%, #1a1a2e 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    position: relative;
+    border-bottom: 2px solid var(--border);
+  }
+
+  .camera-icon-big {
+    width: 80px; height: 80px;
+    border: 3px solid var(--border);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+  }
+
+  /* CAMERA CONTROLS */
+  .camera-controls {
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .obs-input {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    width: 100%;
+    resize: none;
+    outline: none;
+    transition: border-color 0.2s;
+    min-height: 80px;
+  }
+
+  .obs-input::placeholder { color: var(--muted); }
+  .obs-input:focus { border-color: var(--accent); }
+
+  .meta-row {
+    display: flex;
+    gap: 10px;
+  }
+
+  .meta-chip {
+    flex: 1;
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .meta-chip .label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); }
+  .meta-chip .value { color: var(--text); font-size: 11px; }
+
+  .shoot-btn {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    align-self: center;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 0 30px rgba(0, 229, 160, 0.4);
+  }
+
+  .shoot-btn:active { transform: scale(0.92); box-shadow: 0 0 15px rgba(0, 229, 160, 0.2); }
+
+  .btn-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    justify-content: center;
+  }
+
+  .side-btn {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all 0.2s;
+  }
+
+  .side-btn:active { background: var(--border); transform: scale(0.95); }
+
+  /* GALLERY SCREEN */
+  #screen-gallery { padding-top: 16px; }
+
+  .gallery-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .count-badge {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 12px;
+    font-family: 'Space Mono', monospace;
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+
+  .obs-list { display: flex; flex-direction: column; gap: 14px; }
+
+  .obs-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .obs-card:active { transform: scale(0.99); border-color: var(--accent); }
+
+  .obs-card-img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    display: block;
+    background: #0d0d18;
+  }
+
+  .obs-card-img-placeholder {
+    width: 100%;
+    height: 180px;
+    background: linear-gradient(135deg, #0d0d18, #1a1a2e);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+  }
+
+  .obs-card-body { padding: 14px; }
+
+  .obs-card-date {
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    color: var(--accent);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .obs-card-text {
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.5;
+    margin-bottom: 10px;
+  }
+
+  .obs-card-gps {
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .obs-card-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+  }
+
+  .action-btn {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    padding: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+  }
+
+  .action-btn.danger:hover, .action-btn.danger:active {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    gap: 16px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .empty-icon { font-size: 52px; opacity: 0.4; }
+  .empty-text { font-size: 16px; font-weight: 600; }
+  .empty-sub { font-size: 13px; color: var(--muted); opacity: 0.7; }
+
+  /* MAP SCREEN */
+  #screen-map { padding-top: 16px; }
+
+  .map-placeholder {
+    width: 100%;
+    height: 300px;
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .map-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 30px 30px;
+    opacity: 0.4;
+  }
+
+  .map-pin {
+    width: 14px; height: 14px;
+    background: var(--accent);
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    box-shadow: 0 0 12px rgba(0,229,160,0.6);
+    position: relative;
+    z-index: 2;
+  }
+
+  .map-label {
+    font-size: 13px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    position: relative;
+    z-index: 2;
+  }
+
+  .map-obs-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .map-obs-item {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .map-obs-thumb {
+    width: 50px; height: 50px;
+    border-radius: 10px;
+    object-fit: cover;
+    background: #0d0d18;
+    flex-shrink: 0;
+  }
+
+  .map-obs-info { flex: 1; min-width: 0; }
+
+  .map-obs-coords {
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    color: var(--accent);
+    margin-bottom: 3px;
+  }
+
+  .map-obs-text {
+    font-size: 12px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* NAV BAR */
+  .nav-bar {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 430px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    padding: 8px 0 16px;
+    z-index: 200;
+    backdrop-filter: blur(12px);
+  }
+
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 12px;
+    transition: all 0.2s;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+  }
+
+  .nav-item.active { color: var(--accent); }
+
+  .nav-icon { font-size: 22px; line-height: 1; transition: transform 0.2s; }
+  .nav-item.active .nav-icon { transform: scale(1.1); }
+  .nav-label { font-size: 10px; font-weight: 600; letter-spacing: 0.5px; font-family: 'Space Mono', monospace; }
+
+  .nav-item:nth-child(2) .nav-icon { font-size: 32px; color: var(--accent); filter: drop-shadow(0 0 8px rgba(0,229,160,0.5)); }
+  .nav-item:nth-child(2) { margin-top: -16px; }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    background: var(--accent);
+    color: #000;
+    padding: 12px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 999;
+    white-space: nowrap;
+    max-width: 90%;
+  }
+
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* MODAL DETAIL */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(4px);
+    z-index: 500;
+    display: flex;
+    align-items: flex-end;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  .modal-sheet {
+    background: var(--card);
+    border-radius: 24px 24px 0 0;
+    border-top: 1.5px solid var(--border);
+    width: 100%;
+    max-width: 430px;
+    margin: 0 auto;
+    padding: 20px;
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .modal-overlay.open .modal-sheet { transform: translateY(0); }
+
+  .modal-handle {
+    width: 40px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+
+  .modal-img {
+    width: 100%;
+    border-radius: 16px;
+    margin-bottom: 16px;
+    max-height: 280px;
+    object-fit: cover;
+    display: block;
+  }
+
+  .modal-section { margin-bottom: 14px; }
+  .modal-section-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--accent);
+    font-family: 'Space Mono', monospace;
+    margin-bottom: 6px;
+  }
+
+  .modal-section-value {
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  .modal-close-btn {
+    width: 100%;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 14px;
+    border-radius: 14px;
+    cursor: pointer;
+    margin-top: 16px;
+    transition: all 0.2s;
+  }
+
+  .modal-close-btn:active { background: var(--border); }
+
+  /* FLASH ANIMATION */
+  @keyframes flash {
+    0% { opacity: 0; }
+    10% { opacity: 0.8; }
+    100% { opacity: 0; }
+  }
+
+  .camera-flash {
+    position: absolute;
+    inset: 0;
+    background: white;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  .camera-flash.flashing { animation: flash 0.5s ease-out forwards; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 0; }
+</style>
+</head>
+<body>
+<div class="phone-shell">
+
+  <!-- STATUS BAR -->
+  <div class="status-bar">
+    <span id="clock">--:--</span>
+    <span>📶 GPS 🔋</span>
+  </div>
+
+  <!-- HEADER -->
+  <div class="app-header">
+    <div class="logo">Field<span>Snap</span></div>
+    <div class="header-badge" id="obs-count-badge">0 OBS.</div>
+  </div>
+
+  <!-- SCREENS -->
+  <div class="screens">
+
+    <!-- CAMERA SCREEN -->
+    <div class="screen active" id="screen-camera">
+      <div class="viewfinder" id="viewfinder">
+        <video id="video-preview" autoplay playsinline muted style="display:none"></video>
+        <canvas id="hidden-canvas" style="display:none"></canvas>
+        <div class="no-camera-placeholder" id="camera-placeholder">
+          <div style="text-align:center; position:relative; z-index:2;">
+            <div style="font-size:48px; margin-bottom:8px;">📷</div>
+            <div style="font-size:13px; color:var(--muted); font-family:'Space Mono',monospace;">Caméra non activée</div>
+            <div style="font-size:11px; color:var(--muted); opacity:0.6; margin-top:4px;">Appuyez sur 📷 pour activer</div>
+          </div>
+          <!-- Grid pattern -->
+          <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(0,229,160,0.05) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,160,0.05) 1px,transparent 1px);background-size:40px 40px;"></div>
+        </div>
+        <div class="viewfinder-overlay" id="vf-overlay" style="display:none">
+          <div class="corner tl"></div>
+          <div class="corner tr"></div>
+          <div class="corner bl"></div>
+          <div class="corner br"></div>
+          <div class="vf-info">
+            <div class="vf-tag"><div class="gps-dot"></div><span id="vf-gps-text">GPS...</span></div>
+            <div class="vf-tag">⏱ <span id="vf-time"></span></div>
+          </div>
+          <div class="camera-flash" id="camera-flash"></div>
+        </div>
+      </div>
+
+      <div class="camera-controls">
+        <textarea class="obs-input" id="obs-text" placeholder="📝 Observation... (ex: Plante invasive détectée, anomalie terrain...)" rows="3"></textarea>
+
+        <div class="meta-row">
+          <div class="meta-chip">
+            <span class="label">📍 Latitude</span>
+            <span class="value" id="chip-lat">—</span>
+          </div>
+          <div class="meta-chip">
+            <span class="label">📍 Longitude</span>
+            <span class="value" id="chip-lng">—</span>
+          </div>
+          <div class="meta-chip">
+            <span class="label">📅 Date</span>
+            <span class="value" id="chip-date">—</span>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="side-btn" id="btn-gps" title="Actualiser GPS" onclick="refreshGPS()">🛰️</button>
+          <button class="shoot-btn" id="btn-capture" onclick="capturePhoto()">📷</button>
+          <button class="side-btn" id="btn-gallery-quick" title="Galerie" onclick="switchScreen('gallery')">🖼️</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- GALLERY SCREEN -->
+    <div class="screen" id="screen-gallery">
+      <div class="gallery-header">
+        <div class="section-title">Observations</div>
+        <div class="count-badge" id="obs-count-text">0 entrées</div>
+      </div>
+      <div class="obs-list" id="obs-list">
+        <div class="empty-state">
+          <div class="empty-icon">🔭</div>
+          <div class="empty-text">Aucune observation</div>
+          <div class="empty-sub">Prenez votre première photo terrain</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAP SCREEN -->
+    <div class="screen" id="screen-map">
+      <div class="section-title" style="margin-bottom:14px">Carte des points</div>
+      <div class="map-placeholder">
+        <div class="map-grid"></div>
+        <div class="map-pin"></div>
+        <div class="map-label" id="map-label">0 point(s) GPS enregistré(s)</div>
+      </div>
+      <div class="map-obs-list" id="map-list">
+        <div class="empty-state">
+          <div class="empty-icon">🗺️</div>
+          <div class="empty-text">Aucun point GPS</div>
+          <div class="empty-sub">Les observations avec GPS apparaissent ici</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- NAV BAR -->
+  <nav class="nav-bar">
+    <button class="nav-item" onclick="switchScreen('map')">
+      <span class="nav-icon">🗺️</span>
+      <span class="nav-label">Carte</span>
+    </button>
+    <button class="nav-item active" id="nav-camera" onclick="switchScreen('camera')">
+      <span class="nav-icon">📷</span>
+    </button>
+    <button class="nav-item" onclick="switchScreen('gallery')">
+      <span class="nav-icon">🖼️</span>
+      <span class="nav-label">Galerie</span>
+    </button>
+  </nav>
+
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal-sheet" id="modal-sheet">
+    <div class="modal-handle"></div>
+    <img src="" alt="" class="modal-img" id="modal-img" style="display:none">
+    <div class="modal-section">
+      <div class="modal-section-label">📝 Observation</div>
+      <div class="modal-section-value" id="modal-obs">—</div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-label">📅 Date & Heure</div>
+      <div class="modal-section-value" id="modal-date">—</div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-label">📍 Position GPS</div>
+      <div class="modal-section-value" id="modal-gps">—</div>
+    </div>
+    <button class="modal-close-btn" onclick="closeModal()">Fermer</button>
+  </div>
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────
+let observations = JSON.parse(localStorage.getItem('fieldsnap_obs') || '[]');
+let currentGPS = null;
+let stream = null;
+let cameraActive = false;
+let activeScreen = 'camera';
+
+// ─── CLOCK ───────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.getHours().toString().padStart(2,'0') + ':' +
+    now.getMinutes().toString().padStart(2,'0');
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ─── SCREEN NAVIGATION ───────────────────────────────────
+function switchScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  activeScreen = name;
+
+  const navMap = { camera: 1, gallery: 2, map: 2 };
+  const navButtons = document.querySelectorAll('.nav-item');
+  if (name === 'camera') navButtons[1].classList.add('active');
+  else if (name === 'gallery') navButtons[2].classList.add('active');
+  else if (name === 'map') navButtons[0].classList.add('active');
+
+  if (name === 'gallery') renderGallery();
+  if (name === 'map') renderMap();
+}
+
+// ─── GPS ─────────────────────────────────────────────────
+function refreshGPS() {
+  if (!navigator.geolocation) {
+    showToast('❌ GPS non supporté');
+    return;
+  }
+  document.getElementById('chip-lat').textContent = '⌛...';
+  document.getElementById('chip-lng').textContent = '⌛...';
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      currentGPS = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy };
+      document.getElementById('chip-lat').textContent = currentGPS.lat.toFixed(5);
+      document.getElementById('chip-lng').textContent = currentGPS.lng.toFixed(5);
+      document.getElementById('vf-gps-text').textContent = currentGPS.lat.toFixed(4);
+      showToast('✅ GPS: ±' + Math.round(currentGPS.acc) + 'm');
+    },
+    err => {
+      currentGPS = { lat: 35.6728 + (Math.random()-0.5)*0.001, lng: -0.6258 + (Math.random()-0.5)*0.001, acc: 15 };
+      document.getElementById('chip-lat').textContent = currentGPS.lat.toFixed(5) + '*';
+      document.getElementById('chip-lng').textContent = currentGPS.lng.toFixed(5) + '*';
+      document.getElementById('vf-gps-text').textContent = '~' + currentGPS.lat.toFixed(4);
+      showToast('⚠️ GPS simulé (démo)');
+    },
+    { timeout: 8000, enableHighAccuracy: true }
+  );
+}
+
+// Live time in viewfinder
+setInterval(() => {
+  if (cameraActive) {
+    const now = new Date();
+    document.getElementById('vf-time').textContent =
+      now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+}, 1000);
+
+// Update date chip
+function updateDateChip() {
+  const now = new Date();
+  document.getElementById('chip-date').textContent = now.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'2-digit' });
+}
+setInterval(updateDateChip, 10000);
+updateDateChip();
+
+// ─── CAMERA ─────────────────────────────────────────────
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 960 } },
+      audio: false
+    });
+    const video = document.getElementById('video-preview');
+    video.srcObject = stream;
+    video.style.display = 'block';
+    document.getElementById('camera-placeholder').style.display = 'none';
+    document.getElementById('vf-overlay').style.display = 'block';
+    cameraActive = true;
+    showToast('📷 Caméra activée');
+    refreshGPS();
+  } catch (e) {
+    showToast('⚠️ Accès caméra refusé — simulation activée');
+    document.getElementById('vf-overlay').style.display = 'block';
+    cameraActive = false;
+    refreshGPS();
+  }
+}
+
+// Auto-start camera
+startCamera();
+
+// ─── CAPTURE ─────────────────────────────────────────────
+function capturePhoto() {
+  const now = new Date();
+  const obsText = document.getElementById('obs-text').value.trim();
+
+  // Flash animation
+  const flash = document.getElementById('camera-flash');
+  flash.classList.add('flashing');
+  setTimeout(() => flash.classList.remove('flashing'), 600);
+
+  let photoData = null;
+
+  if (cameraActive) {
+    const video = document.getElementById('video-preview');
+    const canvas = document.getElementById('hidden-canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+
+    // Overlay timestamp on image
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+    ctx.fillStyle = '#00e5a0';
+    ctx.font = 'bold 14px monospace';
+    ctx.fillText(now.toLocaleString('fr-FR'), 10, canvas.height - 20);
+    if (currentGPS) {
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.font = '11px monospace';
+      ctx.fillText(`GPS: ${currentGPS.lat.toFixed(5)}, ${currentGPS.lng.toFixed(5)}`, 10, canvas.height - 5);
+    }
+
+    photoData = canvas.toDataURL('image/jpeg', 0.8);
+  } else {
+    // Generate placeholder image with canvas
+    const canvas = document.createElement('canvas');
+    canvas.width = 640; canvas.height = 480;
+    const ctx = canvas.getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, 640, 480);
+    grad.addColorStop(0, '#0d0d18');
+    grad.addColorStop(1, '#1a1a2e');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 640, 480);
+    // Grid
+    ctx.strokeStyle = 'rgba(0,229,160,0.08)';
+    for (let x = 0; x < 640; x += 40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,480); ctx.stroke(); }
+    for (let y = 0; y < 480; y += 40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(640,y); ctx.stroke(); }
+    ctx.fillStyle = 'rgba(0,229,160,0.6)';
+    ctx.font = 'bold 16px monospace';
+    ctx.fillText('📷 FIELDSNAP — ' + now.toLocaleString('fr-FR'), 20, 460);
+    if (currentGPS) {
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.font = '12px monospace';
+      ctx.fillText(`GPS: ${currentGPS.lat.toFixed(5)}, ${currentGPS.lng.toFixed(5)}`, 20, 20);
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.font = 'bold 72px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('📷', 320, 260);
+    photoData = canvas.toDataURL('image/jpeg', 0.8);
+  }
+
+  const obs = {
+    id: Date.now(),
+    date: now.toISOString(),
+    text: obsText || '(Aucune observation)',
+    gps: currentGPS ? { ...currentGPS } : null,
+    photo: photoData
+  };
+
+  observations.unshift(obs);
+  saveData();
+  updateBadge();
+  document.getElementById('obs-text').value = '';
+  showToast('✅ Observation enregistrée !');
+}
+
+// ─── STORAGE ─────────────────────────────────────────────
+function saveData() {
+  // Limit stored photos to avoid localStorage overflow
+  const toSave = observations.map((o, i) => ({
+    ...o,
+    photo: i < 20 ? o.photo : null
+  }));
+  try { localStorage.setItem('fieldsnap_obs', JSON.stringify(toSave)); } catch(e) {}
+}
+
+function updateBadge() {
+  document.getElementById('obs-count-badge').textContent = observations.length + ' OBS.';
+  document.getElementById('obs-count-text').textContent = observations.length + ' entrée' + (observations.length !== 1 ? 's' : '');
+}
+
+// ─── GALLERY ─────────────────────────────────────────────
+function renderGallery() {
+  const list = document.getElementById('obs-list');
+  if (observations.length === 0) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">🔭</div>
+      <div class="empty-text">Aucune observation</div>
+      <div class="empty-sub">Prenez votre première photo terrain</div>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = observations.map((obs, i) => {
+    const date = new Date(obs.date);
+    const dateStr = date.toLocaleDateString('fr-FR', { weekday:'short', day:'2-digit', month:'long', year:'numeric' });
+    const timeStr = date.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+    const gpsStr = obs.gps ? `${obs.gps.lat.toFixed(5)}, ${obs.gps.lng.toFixed(5)}` : 'GPS non disponible';
+
+    return `<div class="obs-card" onclick="openModal(${i})">
+      ${obs.photo
+        ? `<img class="obs-card-img" src="${obs.photo}" alt="photo" loading="lazy">`
+        : `<div class="obs-card-img-placeholder">📷</div>`}
+      <div class="obs-card-body">
+        <div class="obs-card-date">📅 ${dateStr} · ${timeStr}</div>
+        <div class="obs-card-text">${escapeHtml(obs.text)}</div>
+        <div class="obs-card-gps">📍 ${gpsStr}</div>
+        <div class="obs-card-actions">
+          <button class="action-btn" onclick="event.stopPropagation(); shareObs(${i})">↗️ Partager</button>
+          <button class="action-btn danger" onclick="event.stopPropagation(); deleteObs(${i})">🗑️ Supprimer</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── MAP ─────────────────────────────────────────────────
+function renderMap() {
+  const gpsObs = observations.filter(o => o.gps);
+  document.getElementById('map-label').textContent = gpsObs.length + ' point(s) GPS enregistré(s)';
+
+  const mapList = document.getElementById('map-list');
+  if (gpsObs.length === 0) {
+    mapList.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">🗺️</div>
+      <div class="empty-text">Aucun point GPS</div>
+      <div class="empty-sub">Les observations avec GPS apparaissent ici</div>
+    </div>`;
+    return;
+  }
+
+  mapList.innerHTML = gpsObs.map((obs, i) => {
+    const date = new Date(obs.date);
+    const timeStr = date.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit' }) + ' ' + date.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+    return `<div class="map-obs-item">
+      ${obs.photo
+        ? `<img class="map-obs-thumb" src="${obs.photo}" alt="">`
+        : `<div class="map-obs-thumb" style="display:flex;align-items:center;justify-content:center;font-size:22px;background:#0d0d18;border-radius:10px;">📷</div>`}
+      <div class="map-obs-info">
+        <div class="map-obs-coords">📍 ${obs.gps.lat.toFixed(5)}, ${obs.gps.lng.toFixed(5)}</div>
+        <div class="map-obs-text">${escapeHtml(obs.text)}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;font-family:'Space Mono',monospace">${timeStr}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── MODAL ───────────────────────────────────────────────
+function openModal(index) {
+  const obs = observations[index];
+  if (!obs) return;
+  const date = new Date(obs.date);
+
+  const modalImg = document.getElementById('modal-img');
+  if (obs.photo) { modalImg.src = obs.photo; modalImg.style.display = 'block'; }
+  else { modalImg.style.display = 'none'; }
+
+  document.getElementById('modal-obs').textContent = obs.text;
+  document.getElementById('modal-date').textContent =
+    date.toLocaleDateString('fr-FR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' }) +
+    ' à ' + date.toLocaleTimeString('fr-FR');
+  document.getElementById('modal-gps').textContent = obs.gps
+    ? `Lat: ${obs.gps.lat.toFixed(6)}\nLng: ${obs.gps.lng.toFixed(6)}\nPrécision: ±${Math.round(obs.gps.acc)}m`
+    : 'Non disponible';
+
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modal')) {
+    document.getElementById('modal').classList.remove('open');
+  }
+}
+
+// ─── ACTIONS ─────────────────────────────────────────────
+function deleteObs(index) {
+  observations.splice(index, 1);
+  saveData();
+  updateBadge();
+  renderGallery();
+  showToast('🗑️ Observation supprimée');
+}
+
+function shareObs(index) {
+  const obs = observations[index];
+  const date = new Date(obs.date);
+  const text = `📍 FieldSnap — Observation\n📅 ${date.toLocaleString('fr-FR')}\n📝 ${obs.text}\n🛰️ GPS: ${obs.gps ? `${obs.gps.lat.toFixed(6)}, ${obs.gps.lng.toFixed(6)}` : 'N/A'}`;
+
+  if (navigator.share) {
+    navigator.share({ title: 'FieldSnap', text });
+  } else {
+    navigator.clipboard.writeText(text).then(() => showToast('📋 Copié dans le presse-papier'));
+  }
+}
+
+// ─── TOAST ───────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ─── UTILS ───────────────────────────────────────────────
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── INIT ────────────────────────────────────────────────
+updateBadge();
+</script>
+</body>
+</html>
